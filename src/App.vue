@@ -36,7 +36,7 @@
         data: function() {
             return {
                 header: 'Todos',
-                items: JSON.parse(localStorage.items)||[],
+                items: localStorage.items ? JSON.parse(localStorage.items) : [],
                 newItem: '',
                 showModal: false,
                 keys: ''
