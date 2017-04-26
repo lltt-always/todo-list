@@ -81,8 +81,5 @@
 </style>
 <script>
     export default{
-        props: {
-            header: ''
-        }
     }
 </script>
