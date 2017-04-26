@@ -2,7 +2,7 @@
     <div id="app">
         <h1>{{ header }}</h1>
         <div class="search">
-            <input type="text" name="search" v-model="keys" :value="keys" placeholder="Key Words">
+            <input type="text" name="search" v-model="keys" :value="keys" placeholder="Key Words" @keyup.delete="search">
             <button @click="search">search</button>
         </div>
         <div class="newitem">
@@ -18,10 +18,11 @@
                 <button @click="delItem(item)">x</button>
             </li>
         </ul>
+        <div v-if="showResult" class="result">{{ searchResult }}</div>
         <!--For Modal-->
         <!-- use the modal component, pass in the prop -->
         <modal v-if="showModal" @close="showModal = false">
-            <h3 slot="header">Please input a new item</h3>
+            <h3 slot="header">{{ modalHeader }}</h3>
             <span slot="body"></span>
             <span slot="footer"></span>
         </modal>
@@ -36,53 +37,88 @@
         data: function() {
             return {
                 header: 'Todos',
+                // items为展示数据，初始化为localStorage.items
                 items: localStorage.items ? JSON.parse(localStorage.items) : [],
+                // localItems为数据库数据，初始化为localStorage.items
+                localItems: localStorage.items ? JSON.parse(localStorage.items) : [],
                 newItem: '',
                 showModal: false,
-                keys: ''
+                keys: '',
+                modalHeader: '',
+                searchResult: '',
+                showResult: ''
             }
         },
         components: {
             Modal
         },
         methods: {
+            // 更新展示数据
             search: function(){
-                this.items = [];
-                var data = JSON.parse(localStorage.items);
-                var reg = new RegExp(this.keys, 'i');
-                for(var value of data){
-                    if(value.content.search(reg)!=-1){
-                        this.items.push(value)
+                if(this.localItems.length){
+                    this.items = [];
+                    var reg = new RegExp(this.keys, 'i');
+                    for(var value of this.localItems){
+                        if(value.content.search(reg)!=-1){
+                            this.items.push(value)
+                        }
                     }
-                }
+                } else {
+                    this.showResult = true;
+                    this.searchResult = 'There is no result';
+                };
+                if(this.items.length){
+                    this.showResult = false;
+                } else {
+                    this.showResult = true;
+                    this.searchResult = 'There is no result';
+                };
             },
+            // 完成／未完成标识操作需要对数据库进行修改，然后再更新展示数据
             finished: function (item) {
-                item.isFinished = true
-                this.update()
+                this.localItems.forEach(function(val, index, arr){
+                    if(val.content == item.content){
+                        val.isFinished = true;
+                    }
+                });
+                this.update(this.localItems);
+                this.search();
             },
             unfinished: function (item) {
-                item.isFinished = false
-                this.update()
+                this.localItems.forEach(function(val, index, arr){
+                    if(val.content == item.content){
+                        val.isFinished = false;
+                    }
+                });
+                this.update(this.localItems);
+                this.search()
             },
+            // 添加操作需要对数据库进行修改，然后再更新展示数据
             addItem: function () {
                 if (this.newItem) {
-                    this.items.push({content: this.newItem, isFinished: false})
-                    this.update()
+                    this.localItems.push({content: this.newItem, isFinished: false})
+                    this.update(this.localItems);
+                    this.search();
                     this.newItem = ''
                 } else {
-                    this.showModal = true
+                    this.showModal = true;
+                    this.modalHeader = 'Please input a new item';
                 }
             },
+            // 删除操作同样需要对数据库进行修改，然后再更新展示数据
             delItem: function (item) {
-                let index = this.items.indexOf(item)
-                if (index > -1) {
-                    this.items.splice(index, 1)
-                };
-                this.update();
+                var _this = this;
+                this.localItems.forEach(function(val, index, arr){
+                    if(val.content == item.content){
+                        _this.localItems.splice(index, 1)
+                    }
+                });
+                this.update(this.localItems);
+                this.search();
             },
-            update: function () {
-                var localitems = JSON.stringify(this.items)
-                localStorage.setItem('items', localitems)
+            // 写数据库
+            update: function (items) {
+                localStorage.setItem('items', JSON.stringify(items));
             }
         }
     }
@@ -216,5 +252,8 @@
         background-color: rgba(0,0,0,0);
         font-size: 20px;
         height: 20px;
+    }
+    .result {
+        margin-top: 10px;
     }
 </style>
